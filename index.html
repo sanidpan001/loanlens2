@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoanLens — Free EMI Calculator, Loan Comparison & Prepayment Planner</title>
+<meta name="description" content="LoanLens is a free EMI calculator with side-by-side loan comparison, a prepayment simulator, full amortization schedule with CSV download, and Indian lakh/crore number formatting. No signup, unlimited free usage.">
+<meta name="keywords" content="EMI calculator, loan comparison, prepayment simulator, amortization schedule, home loan EMI, car loan EMI">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: { navy: '#0F1E3D', navydeep: '#0A1528', navycard: '#16294F', navyline: '#24396B', gold: '#D4AF37', golddark: '#B8941F', goldsoft: '#F3E7BE' },
+      fontFamily: { display: ['Fraunces','Georgia','serif'], sans: ['Inter','system-ui','sans-serif'] }
+    }
+  }
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; }
+  .font-display { font-family: 'Fraunces', Georgia, serif; }
+  input[type=range] { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 9999px; background: #24396B; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #D4AF37; border: 3px solid #0F1E3D; box-shadow: 0 0 0 2px #D4AF37; cursor: pointer; }
+  input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #D4AF37; border: 3px solid #0F1E3D; box-shadow: 0 0 0 2px #D4AF37; cursor: pointer; }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+  .tab-btn.active { background: #D4AF37; color: #0F1E3D; }
+  .gold-ring:focus { outline: 2px solid #D4AF37; outline-offset: 2px; }
+  .table-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+  .table-scroll::-webkit-scrollbar-track { background: #0F1E3D; }
+  .table-scroll::-webkit-scrollbar-thumb { background: #24396B; border-radius: 8px; }
+  .num-input { background: #0A1528; border: 1px solid #24396B; }
+  .num-input:focus { border-color: #D4AF37; outline: none; }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "What is the EMI formula used by calculators?", "acceptedAnswer": { "@type": "Answer", "text": "EMI = [P x R x (1+R)^N] / [(1+R)^N - 1], where P is the principal loan amount, R is the monthly interest rate (annual rate divided by 12 and by 100), and N is the loan tenure in months. LoanLens applies this standard reducing-balance formula, so a 0% interest loan simply divides the principal by the number of months." } },
+    { "@type": "Question", "name": "Does prepaying my loan reduce my EMI or my tenure?", "acceptedAnswer": { "@type": "Answer", "text": "It depends on what you choose. Reducing tenure keeps the EMI the same and the loan ends earlier, which saves the most interest. Reducing EMI keeps the same end date but lowers your monthly payment. LoanLens simulates extra monthly payments and one-time lump sums, showing exactly how many months and how much interest you save in the reduce-tenure mode." } },
+    { "@type": "Question", "name": "Is a longer or shorter loan tenure better?", "acceptedAnswer": { "@type": "Answer", "text": "A shorter tenure means a higher monthly EMI but far less total interest; a longer tenure lowers the EMI but increases total interest substantially. Use the Compare tab in LoanLens to put two tenures side by side - for example, a 15-year versus 20-year home loan - and see the exact interest difference before you decide." } },
+    { "@type": "Question", "name": "Do EMI calculators include processing fees and other charges?", "acceptedAnswer": { "@type": "Answer", "text": "Most EMI calculators, including LoanLens, compute on the principal you enter. Processing fees (typically 0.5-2% in India), insurance, and prepayment penalties are not part of the EMI math, so compare the total cost of two loans by adding known fees to the principal or noting them alongside the comparison result." } },
+    { "@type": "Question", "name": "Is loan interest calculated on a flat or reducing balance?", "acceptedAnswer": { "@type": "Answer", "text": "Banks in India calculate home, car, and personal loan interest on a reducing (diminishing) balance - interest each month is charged only on the outstanding principal. LoanLens uses the reducing-balance method, which is why the interest portion of your EMI is highest in the early years and the principal portion grows over time, exactly as shown in the amortization schedule." } },
+    { "@type": "Question", "name": "Can I use LoanLens for home, car, and personal loans?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The calculator works for any loan type - home, car, personal, education, or business - because the underlying math is identical. One-tap presets for Home, Car, Personal, and Education loans set typical Indian amounts, rates, and tenures so you can start from a realistic baseline." } }
+  ]
+}
+</script>
+</head>
+<body id="top" class="bg-navydeep text-slate-100 antialiased">
+
+<!-- ===== HEADER ===== -->
+<header class="sticky top-0 z-50 bg-navy/95 backdrop-blur border-b border-navyline">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center justify-between">
+    <a href="#top" class="flex items-center gap-2.5">
+      <span class="w-9 h-9 rounded-lg bg-gold text-navy font-display font-bold text-xl flex items-center justify-center">L</span>
+      <span class="font-display font-bold text-xl tracking-tight text-white">Loan<span class="text-gold">Lens</span></span>
+    </a>
+    <nav class="flex items-center gap-5 text-sm font-medium">
+      <a href="#top" class="text-slate-300 hover:text-gold transition-colors">Home</a>
+      <a href="https://fixoraa.tech" target="_blank" rel="noopener" class="text-slate-300 hover:text-gold transition-colors">More Tools</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ===== TOP AD (verbatim) ===== -->
+<div class="no-print mx-auto max-w-6xl px-4 sm:px-6 pt-4" role="complementary" aria-label="Advertisement">
+  <div class="mx-auto text-center" style="max-width:728px">
+    <span class="block text-[10px] tracking-[0.18em] uppercase text-slate-400 mb-1.5">Advertisement</span>
+    <div class="flex justify-center overflow-hidden">
+      <div class="origin-top scale-[0.44] sm:scale-100 shrink-0">
+        <script>
+          atOptions = { 'key' : '4e68ac77881c17fe128a46565d9a4e8c', 'format' : 'iframe', 'height' : 90, 'width' : 728, 'params' : {} };
+        </script>
+        <script src="https://www.highrevenueformat.com/4e68ac77881c17fe128a46565d9a4e8c/invoke.js"></script>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HERO ===== -->
+<section class="mx-auto max-w-6xl px-4 sm:px-6 pt-8 pb-6">
+  <div class="flex flex-wrap items-center gap-3 mb-4">
+    <span class="inline-flex items-center gap-1.5 rounded-full border border-gold/50 bg-gold/10 px-3.5 py-1.5 text-xs font-semibold tracking-wide text-gold uppercase">
+      <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+      Unlimited Free Usage
+    </span>
+    <span class="text-xs text-slate-400">No signup &middot; No paywall &middot; Runs 100% in your browser</span>
+  </div>
+  <h1 class="font-display text-3xl sm:text-5xl font-bold text-white leading-tight">See your loan clearly.<br class="hidden sm:block"> <span class="text-gold">Borrow smarter.</span></h1>
+  <p class="mt-3 max-w-2xl text-slate-300 text-sm sm:text-base">LoanLens is a free EMI calculator with a live dashboard: compare two loan offers side by side, simulate prepayments, and download your full amortization schedule — all with Indian lakh/crore formatting.</p>
+
+  <!-- Tabs -->
+  <div class="mt-6 inline-flex flex-wrap gap-2 rounded-xl bg-navycard p-1.5 border border-navyline" role="tablist">
+    <button class="tab-btn active gold-ring rounded-lg px-4 sm:px-6 py-2.5 text-sm font-semibold text-slate-200 transition-colors" data-tab="calc" role="tab">EMI Calculator</button>
+    <button class="tab-btn gold-ring rounded-lg px-4 sm:px-6 py-2.5 text-sm font-semibold text-slate-200 transition-colors" data-tab="compare" role="tab">Compare Loans</button>
+    <button class="tab-btn gold-ring rounded-lg px-4 sm:px-6 py-2.5 text-sm font-semibold text-slate-200 transition-colors" data-tab="prepay" role="tab">Prepayment Simulator</button>
+  </div>
+</section>
+
+<main class="mx-auto max-w-6xl px-4 sm:px-6 pb-10">
+
+<!-- ================= TAB 1: EMI CALCULATOR ================= -->
+<section id="tab-calc" class="tab-panel">
+  <!-- Loan type presets -->
+  <div class="flex flex-wrap gap-2 mb-5">
+    <span class="text-xs text-slate-400 self-center mr-1 uppercase tracking-wider">Presets:</span>
+    <button class="preset gold-ring text-xs font-semibold px-3.5 py-2 rounded-full border border-navyline bg-navycard text-slate-200 hover:border-gold hover:text-gold transition-colors" data-p="5000000" data-r="8.5" data-t="20">Home Loan</button>
+    <button class="preset gold-ring text-xs font-semibold px-3.5 py-2 rounded-full border border-navyline bg-navycard text-slate-200 hover:border-gold hover:text-gold transition-colors" data-p="800000" data-r="9.2" data-t="7">Car Loan</button>
+    <button class="preset gold-ring text-xs font-semibold px-3.5 py-2 rounded-full border border-navyline bg-navycard text-slate-200 hover:border-gold hover:text-gold transition-colors" data-p="500000" data-r="11.5" data-t="5">Personal Loan</button>
+    <button class="preset gold-ring text-xs font-semibold px-3.5 py-2 rounded-full border border-navyline bg-navycard text-slate-200 hover:border-gold hover:text-gold transition-colors" data-p="1000000" data-r="9.0" data-t="8">Education Loan</button>
+  </div>
+
+  <div class="grid lg:grid-cols-5 gap-5">
+    <!-- Inputs -->
+    <div class="lg:col-span-2 rounded-2xl bg-navycard border border-navyline p-5 sm:p-6">
+      <h2 class="font-display text-lg font-semibold text-white mb-5">Loan details</h2>
+
+      <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5" for="in-amount">Loan amount (&#8377;)</label>
+      <input id="in-amount" type="number" min="0" value="5000000" class="num-input gold-ring w-full rounded-lg px-3.5 py-2.5 text-white font-semibold" placeholder="e.g. 5000000">
+      <input id="in-amount-r" type="range" min="50000" max="50000000" step="50000" value="5000000" class="w-full mt-3" aria-label="Loan amount slider">
+      <div class="flex justify-between text-[11px] text-slate-500 mt-1 mb-5"><span>&#8377;50K</span><span>&#8377;5Cr</span></div>
+
+      <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5" for="in-rate">Interest rate (% p.a.)</label>
+      <input id="in-rate" type="number" min="0" max="30" step="0.05" value="8.5" class="num-input gold-ring w-full rounded-lg px-3.5 py-2.5 text-white font-semibold" placeholder="e.g. 8.5">
+      <input id="in-rate-r" type="range" min="0" max="24" step="0.1" value="8.5" class="w-full mt-3" aria-label="Interest rate slider">
+      <div class="flex justify-between text-[11px] text-slate-500 mt-1 mb-5"><span>0%</span><span>24%</span></div>
+
+      <div class="flex items-center justify-between mb-1.5">
+        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400" for="in-tenure">Tenure</label>
+        <div class="flex rounded-lg overflow-hidden border border-navyline text-xs font-semibold">
+          <button id="ten-y" class="gold-ring px-3 py-1.5 bg-gold text-navy">Years</button>
+          <button id="ten-m" class="gold-ring px-3 py-1.5 text-slate-300">Months</button>
+        </div>
+      </div>
+      <input id="in-tenure" type="number" min="0" value="20" class="num-input gold-ring w-full rounded-lg px-3.5 py-2.5 text-white font-semibold" placeholder="e.g. 20">
+      <input id="in-tenure-r" type="range" min="1" max="30" step="1" value="20" class="w-full mt-3" aria-label="Tenure slider">
+      <div class="flex justify-between text-[11px] text-slate-500 mt-1" id="tenure-scale"><span>1 yr</span><span>30 yrs</span></div>
+
+      <p id="calc-hint" class="hidden mt-5 text-sm text-amber-300 bg-amber-400/10 border border-amber-400/30 rounded-lg px-3.5 py-2.5"></p>
+    </div>
+
+    <!-- Results -->
+    <div class="lg:col-span-3 space-y-5">
+      <div class="grid sm:grid-cols-3 gap-4">
+        <div class="rounded-2xl bg-gradient-to-br from-gold to-golddark p-5 text-navy">
+          <p class="text-xs font-bold uppercase tracking-wider opacity-70">Monthly EMI</p>
+          <p id="res-emi" class="font-display text-2xl sm:text-3xl font-bold mt-1">&#8377;43,391</p>
+          <p class="text-[11px] font-medium opacity-70 mt-1">per month</p>
+        </div>
+        <div class="rounded-2xl bg-navycard border border-navyline p-5">
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Total interest</p>
+          <p id="res-interest" class="font-display text-2xl sm:text-3xl font-bold mt-1 text-gold">&#8377;54.14L</p>
+          <p class="text-[11px] text-slate-500 mt-1" id="res-interest-full">&#8377;54,13,879</p>
+        </div>
+        <div class="rounded-2xl bg-navycard border border-navyline p-5">
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Total payable</p>
+          <p id="res-total" class="font-display text-2xl sm:text-3xl font-bold mt-1 text-white">&#8377;1.04Cr</p>
+          <p class="text-[11px] text-slate-500 mt-1" id="res-total-full">&#8377;1,04,13,879</p>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="rounded-2xl bg-navycard border border-navyline p-5">
+          <h3 class="text-sm font-semibold text-white mb-1">Principal vs interest</h3>
+          <p class="text-[11px] text-slate-500 mb-3" id="donut-note">Share of what you pay back</p>
+          <canvas id="ch-donut" class="w-full" style="height:220px"></canvas>
+          <div class="flex justify-center gap-5 mt-2 text-xs">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-gold inline-block"></span><span class="text-slate-300">Principal</span></span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm inline-block" style="background:#3B5BBF"></span><span class="text-slate-300">Interest</span></span>
+          </div>
+        </div>
+        <div class="rounded-2xl bg-navycard border border-navyline p-5">
+          <h3 class="text-sm font-semibold text-white mb-1">Balance over time</h3>
+          <p class="text-[11px] text-slate-500 mb-3">Outstanding loan balance, year by year</p>
+          <canvas id="ch-balance" class="w-full" style="height:220px"></canvas>
+        </div>
+      </div>
+
+      <!-- Amortization -->
+      <div class="rounded-2xl bg-navycard border border-navyline p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h3 class="text-sm font-semibold text-white">Amortization schedule</h3>
+            <p class="text-[11px] text-slate-500">Month-by-month split of every EMI</p>
+          </div>
+          <div class="flex gap-2">
+            <button id="btn-yearly" class="gold-ring text-xs font-semibold px-3 py-2 rounded-lg border border-navyline text-slate-300 hover:border-gold transition-colors">Yearly</button>
+            <button id="btn-monthly" class="gold-ring text-xs font-semibold px-3 py-2 rounded-lg bg-gold text-navy">Monthly</button>
+            <button id="btn-csv" class="gold-ring text-xs font-semibold px-3 py-2 rounded-lg border border-gold/60 text-gold hover:bg-gold hover:text-navy transition-colors">Download CSV</button>
+          </div>
+        </div>
+        <div class="table-scroll overflow-auto rounded-lg border border-navyline" style="max-height:380px">
+          <table class="w-full text-xs sm:text-sm whitespace-nowrap">
+            <thead class="sticky top-0 bg-navy">
+              <tr class="text-left text-slate-400 uppercase text-[10px] tracking-wider">
+                <th class="px-4 py-3">Period</th><th class="px-4 py-3 text-right">EMI</th><th class="px-4 py-3 text-right">Principal</th><th class="px-4 py-3 text-right">Interest</th><th class="px-4 py-3 text-right">Balance</th>
+              </tr>
+            </thead>
+            <tbody id="amort-body" class="divide-y divide-navyline/60"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TAB 2: COMPARE ================= -->
+<section id="tab-compare" class="tab-panel hidden">
+  <div class="grid md:grid-cols-2 gap-5 mb-5">
+    <div class="rounded-2xl bg-navycard border-2 border-gold/70 p-5 sm:p-6">
+      <h2 class="font-display text-lg font-semibold text-gold mb-4">Loan A</h2>
+      <div class="space-y-4">
+        <div><label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5" for="a-amount">Amount (&#8377;)</label>
+        <input id="a-amount" type="number" min="0" value="5000000" class="num-input gold-ring w-full rounded-lg px-3.5 py-2.5 text-white font-semibold"></div>
+        <div><label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5" for="a-rate">Rate (% p.a.)</label>
+        <input id="a-rate" type="number" min="0" step="0.05" value="8.5" class="num-input gold-ring w-full rounded-lg px-3.5 py-2.5 text-white font-semibold"></div>
+        <div><label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5" for="a-tenure">Tenure (years)</label>
+        <input id="a-tenure" type="number" min="0" value="20" class="num-input gold-ring w-full rounded-lg px-3.5 py-2.5 text-white font-semibold"></div>
+      </div>
+    </div>
+    <div class="rounded-2xl bg-navycard border-2 border-navyline p-5 sm:p-6">
+      <h2 class="font-display text-lg font-semibold text-slate-200 mb-4">Loan B</h2>
+      <div class="space-y-4">
+        <div><label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5" for="b-amount">Amount (&#8377;)</label>
+        <input id="b-amount" type="number" min="0" value="5000000" class="num-input gold-ring w-full rounded-lg px-3.5 py-2.5 text-white font-semibold"></div>
+        <div><label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5" for="b-rate">Rate (% p.a.)</label>
+        <input id="b-rate" type="number" min="0" step="0.05" value="9.0" class="num-input gold-ring w-full rounded-lg px-3.5 py-2.5 text-white font-semibold"></div>
+        <div><label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5" for="b-tenure">Tenure (years)</label>
+        <input id="b-tenure" type="number" min="0" value="20" class="num-input gold-ring w-full rounded-lg px-3.5 py-2.5 text-white font-semibold"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="compare-result" class="rounded-2xl bg-navycard border border-navyline p-5 sm:p-6">
+    <div id="compare-winner" class="mb-4 text-sm font-semibold text-gold"></div>
+    <div class="table-scroll overflow-x-auto">
+      <table class="w-full text-sm whitespace-nowrap">
+        <thead>
+          <tr class="text-left text-slate-400 uppercase text-[10px] tracking-wider border-b border-navyline">
+            <th class="px-3 py-3"></th><th class="px-3 py-3 text-right text-gold">Loan A</th><th class="px-3 py-3 text-right">Loan B</th><th class="px-3 py-3 text-right">Difference</th>
+          </tr>
+        </thead>
+        <tbody id="compare-body" class="divide-y divide-navyline/60 text-slate-200"></tbody>
+      </table>
+    </div>
+    <p class="mt-4 text-xs text-slate-500">Tip: the cheaper loan is the one with the lower <span class="text-slate-300">total payable</span>, not the lower EMI. Add known processing fees to the amounts above for a true comparison.</p>
+  </div>
+</section>
+
+<!-- ================= TAB 3: PREPAYMENT ================= -->
+<section id="tab-prepay" class="tab-panel hidden">
+  <div class="grid lg:grid-cols-5 gap-5">
+    <div class="lg:col-span-2 rounded-2xl bg-navycard border border-navyline p-5 sm:p-6">
+      <h2 class="font-display text-lg font-semibold text-white mb-1">Prepayment simulator</h2>
+      <p class="text-xs text-slate-500 mb-5">Based on your Calculator-tab loan: <span id="pp-loan-label" class="text-gold font-semibold"></span></p>
+      <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5" for="pp-extra">Extra payment every month (&#8377;)</label>
+      <input id="pp-extra" type="number" min="0" value="5000" class="num-input gold-ring w-full rounded-lg px-3.5 py-2.5 text-white font-semibold">
+      <input id="pp-extra-r" type="range" min="0" max="100000" step="500" value="5000" class="w-full mt-3" aria-label="Extra monthly payment slider">
+      <div class="flex justify-between text-[11px] text-slate-500 mt-1 mb-5"><span>&#8377;0</span><span>&#8377;1L</span></div>
+
+      <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5" for="pp-lump">One-time lump sum (&#8377;)</label>
+      <input id="pp-lump" type="number" min="0" value="200000" class="num-input gold-ring w-full rounded-lg px-3.5 py-2.5 text-white font-semibold mb-5">
+
+      <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5" for="pp-month">Pay lump sum in month</label>
+      <input id="pp-month" type="number" min="1" value="12" class="num-input gold-ring w-full rounded-lg px-3.5 py-2.5 text-white font-semibold mb-2">
+      <p class="text-[11px] text-slate-500">Early prepayments save the most — interest is front-loaded in the first years.</p>
+    </div>
+
+    <div class="lg:col-span-3 space-y-5">
+      <div class="grid sm:grid-cols-3 gap-4">
+        <div class="rounded-2xl bg-gradient-to-br from-gold to-golddark p-5 text-navy">
+          <p class="text-xs font-bold uppercase tracking-wider opacity-70">Interest saved</p>
+          <p id="pp-saved" class="font-display text-2xl sm:text-3xl font-bold mt-1">&#8377;0</p>
+          <p class="text-[11px] font-medium opacity-70 mt-1">vs original schedule</p>
+        </div>
+        <div class="rounded-2xl bg-navycard border border-navyline p-5">
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Time saved</p>
+          <p id="pp-months" class="font-display text-2xl sm:text-3xl font-bold mt-1 text-gold">0 mo</p>
+          <p class="text-[11px] text-slate-500 mt-1" id="pp-newdate">New payoff: —</p>
+        </div>
+        <div class="rounded-2xl bg-navycard border border-navyline p-5">
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-400">New total payable</p>
+          <p id="pp-total" class="font-display text-2xl sm:text-3xl font-bold mt-1 text-white">&#8377;0</p>
+          <p class="text-[11px] text-slate-500 mt-1">principal + interest + extras</p>
+        </div>
+      </div>
+      <div class="rounded-2xl bg-navycard border border-navyline p-5">
+        <h3 class="text-sm font-semibold text-white mb-1">Payoff race: original vs prepayment</h3>
+        <p class="text-[11px] text-slate-500 mb-3">Outstanding balance, month by month</p>
+        <canvas id="ch-prepay" class="w-full" style="height:240px"></canvas>
+        <div class="flex justify-center gap-5 mt-2 text-xs">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm inline-block" style="background:#3B5BBF"></span><span class="text-slate-300">Original schedule</span></span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-gold inline-block"></span><span class="text-slate-300">With prepayment</span></span>
+        </div>
+      </div>
+      <p id="pp-insight" class="text-sm text-slate-300 bg-gold/10 border border-gold/30 rounded-xl px-4 py-3"></p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ===== BOTTOM AD (verbatim) ===== -->
+<div class="no-print mx-auto max-w-6xl px-4 sm:px-6 pb-4" role="complementary" aria-label="Advertisement">
+  <div class="mx-auto text-center" style="max-width:728px">
+    <span class="block text-[10px] tracking-[0.18em] uppercase text-slate-400 mb-1.5">Advertisement</span>
+    <div class="flex justify-center overflow-hidden">
+      <script async src="https://js.wpadmngr.com/static/adManager.js" data-admpid="464498"></script>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SEO ARTICLE ===== -->
+<article class="mx-auto max-w-6xl px-4 sm:px-6 pb-6">
+  <div class="rounded-2xl bg-navycard/60 border border-navyline px-5 sm:px-10 py-8 sm:py-10 prose-seo text-slate-300 text-[15px] leading-relaxed">
+    <h2 class="font-display text-2xl sm:text-3xl font-bold text-white mb-5">EMI Calculator: The Complete Guide to Understanding Your Loan</h2>
+
+    <p class="mb-4">An EMI — an Equated Monthly Instalment — is the fixed amount you pay your lender every month until your loan is fully repaid. Every EMI has two parts: one part repays the principal you borrowed, and the other part pays the interest your lender charges for the privilege of borrowing. An <strong class="text-white">EMI calculator</strong> takes three inputs — loan amount, interest rate, and tenure — and tells you exactly what that monthly number will be, how much total interest you will pay over the life of the loan, and how the full repayment adds up.</p>
+
+    <p class="mb-4">The reason this matters so much is that the EMI number alone hides the real story. Two loans can have nearly identical EMIs and wildly different total costs. A slightly higher interest rate, a longer tenure, or a missing prepayment can quietly add lakhs of rupees to what you repay. Before signing any loan agreement — home, car, personal, or education — running the numbers through a calculator is the single highest-leverage ten minutes in personal finance. This guide explains the math, the trade-offs, and how to use each LoanLens feature to borrow smarter.</p>
+
+    <h3 class="font-display text-xl font-semibold text-gold mt-8 mb-3">The EMI formula, explained simply</h3>
+    <p class="mb-4">The standard EMI formula used by banks worldwide is: EMI = [P × R × (1+R)^N] ÷ [(1+R)^N − 1]. Here P is the principal (the amount you borrow), R is the monthly interest rate (your annual rate divided by 12, then by 100), and N is the tenure in months. For a ₹50,00,000 home loan at 8.5% per annum for 20 years (240 months), R becomes 0.007083 and the formula gives an EMI of about ₹43,391.</p>
+    <p class="mb-4">You never need to compute this by hand, but understanding the formula teaches you one crucial lesson: the EMI is not linear. A 1% rise in the interest rate does not raise your EMI by 1% — and doubling the tenure does not halve your EMI. Interest compounds on the outstanding balance, so the relationship between rate, tenure, and EMI has curves in it. That is exactly why a calculator beats intuition, and why even financially savvy borrowers check before they commit.</p>
+
+    <h3 class="font-display text-xl font-semibold text-gold mt-8 mb-3">Reducing balance vs flat rate: the number that fools borrowers</h3>
+    <p class="mb-4">In India, banks calculate home, car, personal, and education loan interest on a <strong class="text-white">reducing (diminishing) balance</strong>: each month, interest is charged only on the principal you still owe. As you repay, the interest portion of your EMI shrinks and the principal portion grows. This is why your first few years of a home loan feel like "paying only interest" — in month one of the ₹50 lakh example above, roughly ₹35,400 of the ₹43,391 EMI is interest and only about ₹8,000 reduces the principal. By year fifteen, the split has nearly reversed.</p>
+    <p class="mb-4">Beware of any lender quoting a "flat rate." A flat rate charges interest on the full original principal for the entire tenure, which makes a 10% flat rate roughly equivalent to an 18–19% reducing-balance rate. Always ask which method is used, and always compare loans on the reducing-balance basis that LoanLens uses. The amortization schedule below the calculator shows this front-loading month by month, so you can see exactly where each rupee of your EMI goes.</p>
+
+    <h3 class="font-display text-xl font-semibold text-gold mt-8 mb-3">The tenure trade-off: small EMI now vs lakhs later</h3>
+    <p class="mb-4">Tenure is the most powerful lever you have. Take that ₹50 lakh loan at 8.5%. Over 15 years, the EMI is about ₹49,200 and total interest is roughly ₹38.6 lakh. Stretch it to 20 years and the EMI drops to about ₹43,391 — a saving of only ₹5,800 a month — but total interest balloons to roughly ₹54.1 lakh, more than ₹15 lakh extra. Over 25 years, the EMI falls to about ₹40,100 while total interest crosses ₹70 lakh. That "affordable" EMI is quietly the most expensive option on the table.</p>
+    <p class="mb-4">The rule of thumb: choose the shortest tenure whose EMI fits comfortably in your budget, keeping total EMIs under 40% of your take-home income. If the shorter tenure's EMI feels tight, that tightness is information — it may mean the loan amount itself is too ambitious. The Compare tab exists precisely for this decision: put the 15-year and 20-year versions side by side and look at the interest difference before you sign.</p>
+
+    <h3 class="font-display text-xl font-semibold text-gold mt-8 mb-3">Why prepayment is the highest-return "investment" most borrowers ignore</h3>
+    <p class="mb-4">Prepayment — paying extra toward your principal beyond the scheduled EMI — attacks the most expensive part of your loan: early interest. Because interest is front-loaded, an extra payment in year two destroys far more future interest than the same payment in year twelve. A borrower paying just ₹5,000 extra per month on the ₹50 lakh, 8.5%, 20-year loan above finishes roughly 3 years early and saves over ₹11 lakh in interest. A single ₹2,00,000 lump sum in month twelve saves a similar order of magnitude.</p>
+    <p class="mb-4">Two practical notes for Indian borrowers. First, floating-rate home loans cannot legally carry prepayment penalties in India, while fixed-rate loans sometimes can — check your sanction letter. Second, you usually get to choose whether a prepayment reduces your tenure or your EMI. Reducing tenure saves far more interest and is almost always the better choice if your monthly budget is comfortable. The Prepayment Simulator tab models both extra monthly payments and one-time lump sums, and shows your new payoff date, months saved, and interest saved instantly.</p>
+
+    <h3 class="font-display text-xl font-semibold text-gold mt-8 mb-3">Comparing loan offers: rate is not the whole price</h3>
+    <p class="mb-4">When two banks offer you loans, the headline interest rate is only the beginning. Processing fees in India typically run 0.5% to 2% of the loan amount; on a ₹50 lakh loan, a 1% fee is ₹50,000 paid on day one. Some lenders bundle insurance, charge higher prepayment penalties, or reset floating rates less favourably. The correct comparison metric is <strong class="text-white">total payable</strong> — EMI × months + all fees — not the EMI alone and not the rate alone.</p>
+    <p class="mb-4">A concrete trap: Bank A offers 8.4% with a 1.5% processing fee; Bank B offers 8.6% with zero fee. The lower rate looks better, but the ₹75,000 fee at Bank A can wipe out years of the rate advantage on shorter tenures. Enter both offers in the Compare tab — adding known fees into the loan amount — and let the total-payable row declare the winner. Small rate differences matter enormously on 20-year loans and barely at all on 3-year loans; the comparison table makes that visible.</p>
+
+    <h3 class="font-display text-xl font-semibold text-gold mt-8 mb-3">How much EMI can you actually afford?</h3>
+    <p class="mb-4">Financial planners and Indian banks converge on the same guideline: your total monthly EMIs — home plus car plus personal plus credit-card minimums — should stay under 40% of your net monthly income, and ideally under 30%. This is the FOIR (fixed obligation to income ratio) concept banks use when approving you, and it is worth applying to yourself before they do. A ₹1,00,000 monthly take-home supports roughly ₹30,000–₹40,000 of total EMI; beyond that, one emergency — a job change, a medical bill — can turn a manageable loan into a default.</p>
+    <p class="mb-4">Also budget for what the EMI does not include: home insurance, maintenance, and the rate risk on floating loans. If the repo rate rises 1% during your tenure, a floating-rate EMI on a large home loan can jump several thousand rupees a month. Keeping a 3–6 month EMI buffer in a separate account is the cheapest insurance against that shock, and it costs nothing to set up.</p>
+
+    <h3 class="font-display text-xl font-semibold text-gold mt-8 mb-3">Reading your amortization schedule like a banker</h3>
+    <p class="mb-4">The amortization schedule is the loan's full biography: every month's EMI split into principal and interest, plus the remaining balance. Three things to look for. First, the crossover point — the month where principal first exceeds interest — which on a 20-year loan arrives surprisingly late, often around year 12–13. Second, the balance curve's shape: it falls slowly, then steeply, which is why early prepayments are so powerful. Third, the yearly rollup, which is what you need for tax filing: under Section 24(b) you can deduct up to ₹2 lakh of home-loan interest per year on a self-occupied property, and under Section 80C up to ₹1.5 lakh of principal repayment.</p>
+    <p class="mb-4">LoanLens lets you toggle between monthly and yearly views and download the entire schedule as a CSV, so you can keep it with your financial records or analyse it in a spreadsheet. Few free calculators offer a downloadable schedule; it is the document your chartered accountant will thank you for.</p>
+
+    <h3 class="font-display text-xl font-semibold text-gold mt-8 mb-3">Common EMI mistakes to avoid</h3>
+    <p class="mb-4">The most expensive mistakes are all avoidable. Choosing the longest tenure "to be safe" without computing the interest cost. Ignoring processing fees when comparing two offers. Taking a personal loan at 14% to make a home-loan down payment — borrowing at a higher rate to borrow at a lower one. Making only minimum payments on a credit card while holding a low-rate home loan. And the quietest mistake of all: never revisiting the loan. Rates fall, incomes rise, bonuses arrive — a borrower who never models a prepayment leaves lakhs on the table by pure inertia.</p>
+    <p class="mb-4">The antidote is a ten-minute habit: once a year, re-enter your outstanding balance, remaining tenure, and current rate, then test a prepayment scenario. If a bonus or increment can shave two years off your loan, you will see it in seconds. Loans reward attention; the math is always on the side of the borrower who checks.</p>
+
+    <h3 class="font-display text-xl font-semibold text-gold mt-8 mb-3">How LoanLens helps</h3>
+    <p class="mb-4">LoanLens combines the four tools borrowers actually need in one free dashboard. The <strong class="text-white">EMI Calculator</strong> gives instant results with sliders, one-tap presets for home, car, personal, and education loans, a principal-vs-interest donut chart, a balance-over-time curve, and a full amortization schedule with CSV download. <strong class="text-white">Compare Loans</strong> puts two offers side by side — different rates, amounts, or tenures — and names the cheaper one by total payable. The <strong class="text-white">Prepayment Simulator</strong> shows what extra monthly payments or a lump sum do to your payoff date and lifetime interest. Everything is formatted in Indian digit grouping (lakhs and crores), everything runs privately in your browser with no signup, and every calculation is free and unlimited.</p>
+  </div>
+
+  <!-- FAQs -->
+  <div class="mt-8 rounded-2xl bg-navycard/60 border border-navyline px-5 sm:px-10 py-8">
+    <h2 class="font-display text-2xl font-bold text-white mb-6">Frequently asked questions</h2>
+    <div class="space-y-5 text-[15px] leading-relaxed">
+      <div><h3 class="font-semibold text-gold mb-1.5">What is the EMI formula used by calculators?</h3><p class="text-slate-300">EMI = [P × R × (1+R)^N] ÷ [(1+R)^N − 1], where P is the principal, R is the monthly interest rate (annual rate ÷ 12 ÷ 100), and N is the tenure in months. LoanLens applies this standard reducing-balance formula.</p></div>
+      <div><h3 class="font-semibold text-gold mb-1.5">Does prepaying my loan reduce my EMI or my tenure?</h3><p class="text-slate-300">You usually get to choose. Reducing tenure keeps the EMI the same and ends the loan earlier, saving the most interest. Reducing EMI lowers your monthly payment but keeps the end date. LoanLens simulates the reduce-tenure approach with extra monthly payments and lump sums.</p></div>
+      <div><h3 class="font-semibold text-gold mb-1.5">Is a longer or shorter loan tenure better?</h3><p class="text-slate-300">Shorter tenures mean higher EMIs but far less total interest; longer tenures lower the EMI but cost much more overall. Compare both options in the Compare tab and look at the total-interest difference before deciding.</p></div>
+      <div><h3 class="font-semibold text-gold mb-1.5">Do EMI calculators include processing fees and other charges?</h3><p class="text-slate-300">No — calculators work on the principal you enter. Processing fees (typically 0.5–2% in India), insurance, and penalties sit outside the EMI math, so add known fees to the amount or note them when comparing two loans.</p></div>
+      <div><h3 class="font-semibold text-gold mb-1.5">Is loan interest calculated on a flat or reducing balance?</h3><p class="text-slate-300">Indian banks use the reducing-balance method: interest each month is charged only on the outstanding principal. That is why the interest portion of your EMI is highest early on, exactly as the amortization schedule shows.</p></div>
+      <div><h3 class="font-semibold text-gold mb-1.5">Can I use LoanLens for home, car, and personal loans?</h3><p class="text-slate-300">Yes. The EMI math is identical for every loan type, so one-tap presets for Home, Car, Personal, and Education loans set realistic Indian amounts, rates, and tenures as your starting point.</p></div>
+    </div>
+  </div>
+</article>
+
+<!-- ===== FOOTER ===== -->
+<footer class="border-t border-navyline mt-4">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <a href="#top" class="flex items-center gap-2.5">
+      <span class="w-8 h-8 rounded-lg bg-gold text-navy font-display font-bold text-lg flex items-center justify-center">L</span>
+      <span class="font-display font-bold text-lg text-white">Loan<span class="text-gold">Lens</span></span>
+    </a>
+    <p class="text-xs text-slate-500 text-center">Free EMI calculator, loan comparison &amp; prepayment planner. Calculations are estimates for planning — confirm final figures with your lender.</p>
+    <nav class="flex items-center gap-5 text-sm font-medium">
+      <a href="#top" class="text-slate-400 hover:text-gold transition-colors">Home</a>
+      <a href="https://fixoraa.tech" target="_blank" rel="noopener" class="text-slate-400 hover:text-gold transition-colors">More Tools</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+/* ================= LoanLens core logic (pure functions) ================= */
+function calcEMI(P, annualRatePct, nMonths) {
+  P = Number(P); annualRatePct = Number(annualRatePct); nMonths = Math.floor(Number(nMonths));
+  if (!(P > 0) || !(nMonths > 0) || !(annualRatePct >= 0)) return 0;
+  var r = annualRatePct / 1200;
+  if (r === 0) return P / nMonths;
+  var f = Math.pow(1 + r, nMonths);
+  return P * r * f / (f - 1);
+}
+
+function amortize(P, annualRatePct, nMonths) {
+  P = Number(P); annualRatePct = Number(annualRatePct); nMonths = Math.floor(Number(nMonths));
+  var emi = calcEMI(P, annualRatePct, nMonths);
+  var r = annualRatePct / 1200, bal = P, sched = [];
+  if (emi <= 0) return { emi: 0, schedule: [] };
+  for (var m = 1; m <= nMonths && bal > 0.005; m++) {
+    var interest = bal * r;
+    var principal = emi - interest;
+    if (principal > bal) principal = bal;
+    var pay = principal + interest;
+    bal -= principal;
+    sched.push({ month: m, emi: pay, principal: principal, interest: interest, balance: Math.max(bal, 0) });
+    if (bal <= 0.005) break;
+  }
+  return { emi: emi, schedule: sched };
+}
+
+function loanTotals(P, annualRatePct, nMonths) {
+  var res = amortize(P, annualRatePct, nMonths);
+  var totalInterest = 0, totalPaid = 0;
+  res.schedule.forEach(function (s) { totalInterest += s.interest; totalPaid += s.emi; });
+  return { emi: res.emi, totalInterest: totalInterest, totalPayable: totalPaid, months: res.schedule.length };
+}
+
+/* Prepayment simulation: extra monthly payment + one-time lump sum at a given month.
+   Strategy: keep EMI constant -> loan ends earlier (maximum interest saved). */
+function simulatePrepay(P, annualRatePct, nMonths, extraMonthly, lumpSum, lumpMonth) {
+  P = Number(P); annualRatePct = Number(annualRatePct); nMonths = Math.floor(Number(nMonths));
+  extraMonthly = Math.max(0, Number(extraMonthly) || 0);
+  lumpSum = Math.max(0, Number(lumpSum) || 0);
+  lumpMonth = Math.floor(Number(lumpMonth) || 0);
+  var base = amortize(P, annualRatePct, nMonths);
+  var baseInterest = 0;
+  base.schedule.forEach(function (s) { baseInterest += s.interest; });
+  var r = annualRatePct / 1200, emi = base.emi;
+  var bal = P, totalInt = 0, sched = [], m = 0, lumpApplied = 0;
+  if (emi <= 0) return { monthsTaken: 0, totalInterest: 0, interestSaved: 0, monthsSaved: 0, schedule: [] };
+  while (bal > 0.005 && m < nMonths + 1200) {
+    m++;
+    if (lumpMonth > 0 && m === lumpMonth && lumpSum > 0 && bal > 0) {
+      var applied = Math.min(lumpSum, bal);
+      bal -= applied; lumpApplied += applied;
+    }
+    var interest = bal * r;
+    var pay = emi + extraMonthly;
+    var principal = pay - interest;
+    if (principal >= bal) { principal = bal; pay = bal + interest; }
+    bal -= principal; totalInt += interest;
+    sched.push({ month: m, emi: pay, principal: principal, interest: interest, balance: Math.max(bal, 0) });
+    if (bal <= 0.005) break;
+  }
+  return {
+    monthsTaken: m, totalInterest: totalInt,
+    interestSaved: Math.max(0, baseInterest - totalInt),
+    monthsSaved: Math.max(0, base.schedule.length - m),
+    totalPaid: P + totalInt, schedule: sched, lumpApplied: lumpApplied
+  };
+}
+
+/* Indian digit grouping: lakh / crore */
+function fmtINR(n) {
+  if (!isFinite(n)) return '—';
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+function trimNum(x) {
+  var s = (Math.round(x * 100) / 100).toString();
+  return s;
+}
+function fmtCompactINR(n) {
+  if (!isFinite(n)) return '—';
+  n = Math.round(n);
+  if (n >= 10000000) return '₹' + trimNum(n / 10000000) + 'Cr';
+  if (n >= 100000) return '₹' + trimNum(n / 100000) + 'L';
+  if (n >= 1000) return '₹' + trimNum(n / 1000) + 'K';
+  return '₹' + n.toLocaleString('en-IN');
+}
+
+/* ================= UI state & helpers ================= */
+var tenureUnit = 'years';
+var amortMode = 'monthly';
+var lastLoan = null; // {P, rate, months}
+
+function $(id) { return document.getElementById(id); }
+
+function fitCanvas(cv) {
+  var dpr = window.devicePixelRatio || 1;
+  var w = cv.clientWidth || 300;
+  var h = parseInt(cv.style.height, 10) || 220;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  var ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  return { ctx: ctx, w: w, h: h };
+}
+
+function drawDonut(cv, principal, interest) {
+  var f = fitCanvas(cv), ctx = f.ctx;
+  var cx = f.w / 2, cy = f.h / 2, rad = Math.min(f.w, f.h) / 2 - 18;
+  var total = principal + interest;
+  ctx.lineWidth = 34;
+  if (total <= 0) {
+    ctx.strokeStyle = '#24396B'; ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.stroke();
+  } else {
+    var a0 = -Math.PI / 2, a1 = a0 + (principal / total) * Math.PI * 2;
+    ctx.strokeStyle = '#D4AF37'; ctx.beginPath(); ctx.arc(cx, cy, rad, a0, a1); ctx.stroke();
+    ctx.strokeStyle = '#3B5BBF'; ctx.beginPath(); ctx.arc(cx, cy, rad, a1, a0 + Math.PI * 2); ctx.stroke();
+  }
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+  ctx.font = '700 20px Fraunces, serif';
+  ctx.fillText(total > 0 ? Math.round(interest / total * 100) + '%' : '—', cx, cy - 2);
+  ctx.font = '500 11px Inter, sans-serif'; ctx.fillStyle = '#94A3B8';
+  ctx.fillText('interest share', cx, cy + 16);
+}
+
+function drawLineChart(cv, series, opts) {
+  opts = opts || {};
+  var f = fitCanvas(cv), ctx = f.ctx;
+  var padL = 56, padR = 10, padT = 12, padB = 26;
+  var W = f.w - padL - padR, H = f.h - padT - padB;
+  var maxV = 0;
+  series.forEach(function (s) { s.values.forEach(function (v) { if (v > maxV) maxV = v; }); });
+  if (maxV <= 0) maxV = 1;
+  function X(i, n) { return padL + (n <= 1 ? 0 : (i / (n - 1)) * W); }
+  function Y(v) { return padT + H - (v / maxV) * H; }
+  ctx.strokeStyle = '#24396B'; ctx.fillStyle = '#64748B'; ctx.font = '10px Inter, sans-serif';
+  ctx.lineWidth = 1; ctx.textAlign = 'right';
+  for (var g = 0; g <= 4; g++) {
+    var gv = maxV * g / 4, gy = Y(gv);
+    ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(padL + W, gy); ctx.stroke();
+    ctx.fillText(fmtCompactINR(gv), padL - 6, gy + 3);
+  }
+  var n = Math.max.apply(null, series.map(function (s) { return s.values.length; }));
+  ctx.textAlign = 'center';
+  var xStep = Math.max(1, Math.ceil(n / 6));
+  for (var i = 0; i < n; i += xStep) {
+    var lbl = opts.xLabel ? opts.xLabel(i) : ('M' + (i + 1));
+    ctx.fillText(lbl, X(i, n), padT + H + 16);
+  }
+  series.forEach(function (s) {
+    if (opts.fill && s.fill) {
+      ctx.beginPath();
+      s.values.forEach(function (v, i) { var x = X(i, n), y = Y(v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      ctx.lineTo(X(s.values.length - 1, n), padT + H); ctx.lineTo(padL, padT + H); ctx.closePath();
+      var grad = ctx.createLinearGradient(0, padT, 0, padT + H);
+      grad.addColorStop(0, 'rgba(212,175,55,0.35)'); grad.addColorStop(1, 'rgba(212,175,55,0)');
+      ctx.fillStyle = grad; ctx.fill();
+    }
+    ctx.strokeStyle = s.color; ctx.lineWidth = 2.5; ctx.beginPath();
+    s.values.forEach(function (v, i) { var x = X(i, n), y = Y(v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.stroke();
+  });
+}
+
+function yearlyAgg(schedule) {
+  var years = [];
+  schedule.forEach(function (s) {
+    var y = Math.ceil(s.month / 12) - 1;
+    if (!years[y]) years[y] = { year: y + 1, emi: 0, principal: 0, interest: 0, balance: 0 };
+    years[y].emi += s.emi; years[y].principal += s.principal; years[y].interest += s.interest;
+    years[y].balance = s.balance;
+  });
+  return years;
+}
+
+/* ================= Main calculator ================= */
+function readLoanInputs() {
+  var P = parseFloat($('in-amount').value);
+  var rate = parseFloat($('in-rate').value);
+  var ten = parseFloat($('in-tenure').value);
+  var months = tenureUnit === 'years' ? Math.round(ten * 12) : Math.round(ten);
+  return { P: P, rate: rate, months: months };
+}
+
+function recalc() {
+  var inp = readLoanInputs();
+  var hint = $('calc-hint');
+  var bad = !(inp.P > 0);
+  var badTenure = !(inp.months > 0);
+  var badRate = !(inp.rate >= 0);
+  if (bad || badTenure || badRate) {
+    var msg = bad ? 'Please enter a valid loan amount greater than zero.'
+      : badTenure ? 'Please enter a valid tenure greater than zero.'
+      : 'Please enter a valid interest rate (0 or more).';
+    hint.textContent = msg; hint.classList.remove('hidden');
+    $('res-emi').textContent = '—'; $('res-interest').textContent = '—'; $('res-total').textContent = '—';
+    $('res-interest-full').textContent = ''; $('res-total-full').textContent = '';
+    $('amort-body').innerHTML = '';
+    drawDonut($('ch-donut'), 0, 0);
+    drawLineChart($('ch-balance'), [{ values: [], color: '#D4AF37' }]);
+    lastLoan = null;
+    saveState();
+    return;
+  }
+  hint.classList.add('hidden');
+  var t = loanTotals(inp.P, inp.rate, inp.months);
+  lastLoan = { P: inp.P, rate: inp.rate, months: inp.months };
+  $('res-emi').textContent = fmtINR(t.emi);
+  $('res-interest').textContent = fmtCompactINR(t.totalInterest);
+  $('res-interest-full').textContent = fmtINR(t.totalInterest) + ' total interest';
+  $('res-total').textContent = fmtCompactINR(t.totalPayable);
+  $('res-total-full').textContent = fmtINR(t.totalPayable) + ' total payable';
+  $('donut-note').textContent = 'Share of what you pay back · ' + t.months + ' monthly payments';
+  drawDonut($('ch-donut'), inp.P, t.totalInterest);
+  var sched = amortize(inp.P, inp.rate, inp.months).schedule;
+  var years = yearlyAgg(sched);
+  drawLineChart($('ch-balance'),
+    [{ values: years.map(function (y) { return y.balance; }), color: '#D4AF37', fill: true }],
+    { xLabel: function (i) { return 'Y' + (i + 1); } });
+  renderAmort(sched);
+  recalcPrepay();
+  saveState();
+}
+
+function renderAmort(sched) {
+  var html = '';
+  if (amortMode === 'monthly') {
+    sched.forEach(function (s) {
+      html += '<tr class="text-slate-200"><td class="px-4 py-2.5">Month ' + s.month + '</td>' +
+        '<td class="px-4 py-2.5 text-right">' + fmtINR(s.emi) + '</td>' +
+        '<td class="px-4 py-2.5 text-right text-emerald-300">' + fmtINR(s.principal) + '</td>' +
+        '<td class="px-4 py-2.5 text-right text-amber-300">' + fmtINR(s.interest) + '</td>' +
+        '<td class="px-4 py-2.5 text-right text-slate-400">' + fmtINR(s.balance) + '</td></tr>';
+    });
+  } else {
+    yearlyAgg(sched).forEach(function (y) {
+      html += '<tr class="text-slate-200"><td class="px-4 py-2.5">Year ' + y.year + '</td>' +
+        '<td class="px-4 py-2.5 text-right">' + fmtINR(y.emi) + '</td>' +
+        '<td class="px-4 py-2.5 text-right text-emerald-300">' + fmtINR(y.principal) + '</td>' +
+        '<td class="px-4 py-2.5 text-right text-amber-300">' + fmtINR(y.interest) + '</td>' +
+        '<td class="px-4 py-2.5 text-right text-slate-400">' + fmtINR(y.balance) + '</td></tr>';
+    });
+  }
+  $('amort-body').innerHTML = html;
+}
+
+function downloadCSV() {
+  if (!lastLoan) return;
+  var sched = amortize(lastLoan.P, lastLoan.rate, lastLoan.months).schedule;
+  var rows = ['Month,EMI,Principal,Interest,Balance'];
+  sched.forEach(function (s) {
+    rows.push([s.month, Math.round(s.emi), Math.round(s.principal), Math.round(s.interest), Math.round(s.balance)].join(','));
+  });
+  var blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'loanlens-amortization.csv';
+  document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
+/* ================= Compare ================= */
+function readSide(prefix) {
+  return {
+    P: parseFloat($(prefix + '-amount').value),
+    rate: parseFloat($(prefix + '-rate').value),
+    months: Math.round(parseFloat($(prefix + '-tenure').value) * 12)
+  };
+}
+function recalcCompare() {
+  var A = readSide('a'), B = readSide('b');
+  var body = $('compare-body'), winner = $('compare-winner');
+  function ok(x) { return x.P > 0 && x.months > 0 && x.rate >= 0; }
+  if (!ok(A) || !ok(B)) {
+    body.innerHTML = '<tr><td colspan="4" class="px-3 py-6 text-center text-slate-500">Enter valid amounts, rates and tenures for both loans to compare.</td></tr>';
+    winner.textContent = '';
+    return;
+  }
+  var tA = loanTotals(A.P, A.rate, A.months), tB = loanTotals(B.P, B.rate, B.months);
+  var rows = [
+    ['Monthly EMI', tA.emi, tB.emi, true],
+    ['Total interest', tA.totalInterest, tB.totalInterest, true],
+    ['Total payable', tA.totalPayable, tB.totalPayable, true],
+    ['Interest as % of principal', tA.totalInterest / A.P * 100, tB.totalInterest / B.P * 100, false]
+  ];
+  var html = '';
+  rows.forEach(function (r) {
+    var label = r[0], va = r[1], vb = r[2], money = r[3];
+    var f = money ? fmtINR : function (x) { return x.toFixed(1) + '%'; };
+    var diff = va - vb;
+    var dTxt = money ? fmtINR(Math.abs(diff)) : Math.abs(diff).toFixed(1) + ' pts';
+    var dCls = diff === 0 ? 'text-slate-500' : (diff < 0 ? 'text-emerald-300' : 'text-red-300');
+    var aCls = va <= vb ? 'text-gold font-semibold' : '';
+    var bCls = vb < va ? 'text-gold font-semibold' : '';
+    html += '<tr><td class="px-3 py-3 text-slate-400">' + label + '</td>' +
+      '<td class="px-3 py-3 text-right ' + aCls + '">' + f(va) + '</td>' +
+      '<td class="px-3 py-3 text-right ' + bCls + '">' + f(vb) + '</td>' +
+      '<td class="px-3 py-3 text-right ' + dCls + '">' + (diff === 0 ? '—' : (diff < 0 ? 'A lower by ' : 'B lower by ') + dTxt) + '</td></tr>';
+  });
+  body.innerHTML = html;
+  if (tA.totalPayable < tB.totalPayable) {
+    winner.innerHTML = '&#9733; <span class="text-white">Loan A wins</span> — saves ' + fmtINR(tB.totalPayable - tA.totalPayable) + ' overall.';
+  } else if (tB.totalPayable < tA.totalPayable) {
+    winner.innerHTML = '&#9733; <span class="text-white">Loan B wins</span> — saves ' + fmtINR(tA.totalPayable - tB.totalPayable) + ' overall.';
+  } else {
+    winner.innerHTML = 'Both loans cost exactly the same overall.';
+  }
+}
+
+/* ================= Prepayment ================= */
+function recalcPrepay() {
+  var label = $('pp-loan-label'), insight = $('pp-insight');
+  if (!lastLoan) {
+    label.textContent = '— set a valid loan in the Calculator tab —';
+    $('pp-saved').textContent = '—'; $('pp-months').textContent = '—';
+    $('pp-total').textContent = '—'; $('pp-newdate').textContent = 'New payoff: —';
+    insight.textContent = 'Enter a valid loan in the EMI Calculator tab first — the simulator runs on those numbers.';
+    drawLineChart($('ch-prepay'), [{ values: [], color: '#D4AF37' }]);
+    return;
+  }
+  label.textContent = fmtCompactINR(lastLoan.P) + ' @ ' + lastLoan.rate + '% · ' + lastLoan.months + ' months';
+  var extra = parseFloat($('pp-extra').value) || 0;
+  var lump = parseFloat($('pp-lump').value) || 0;
+  var lumpM = parseInt($('pp-month').value, 10) || 0;
+  var sim = simulatePrepay(lastLoan.P, lastLoan.rate, lastLoan.months, extra, lump, lumpM);
+  var base = amortize(lastLoan.P, lastLoan.rate, lastLoan.months).schedule;
+  $('pp-saved').textContent = fmtCompactINR(sim.interestSaved);
+  $('pp-months').textContent = sim.monthsSaved + ' mo';
+  $('pp-total').textContent = fmtCompactINR(sim.totalPaid);
+  var payoff = new Date(); payoff.setMonth(payoff.getMonth() + sim.monthsTaken);
+  $('pp-newdate').textContent = 'New payoff: ' + payoff.toLocaleString('en-IN', { month: 'short', year: 'numeric' }) + ' (' + sim.monthsTaken + ' payments)';
+  var step = Math.max(1, Math.floor(base.length / 60));
+  var origV = base.filter(function (_, i) { return i % step === 0; }).map(function (s) { return s.balance; });
+  var step2 = Math.max(1, Math.floor(sim.schedule.length / 60));
+  var newV = sim.schedule.filter(function (_, i) { return i % step2 === 0; }).map(function (s) { return s.balance; });
+  drawLineChart($('ch-prepay'), [
+    { values: origV, color: '#3B5BBF' },
+    { values: newV, color: '#D4AF37' }
+  ], { xLabel: function (i) { return 'Y' + (Math.floor(i * step / 12) + 1); } });
+  if (sim.interestSaved <= 0) {
+    insight.textContent = 'Add an extra monthly payment or a lump sum above to see your savings — even ₹2,000/month extra makes a visible dent.';
+  } else {
+    var yrs = Math.floor(sim.monthsSaved / 12), mo = sim.monthsSaved % 12;
+    var tstr = yrs > 0 ? yrs + ' yr' + (yrs > 1 ? 's' : '') + (mo ? ' ' + mo + ' mo' : '') : mo + ' months';
+    insight.innerHTML = '&#128161; With these prepayments you become debt-free <strong class="text-gold">' + tstr + ' earlier</strong> and keep <strong class="text-gold">' + fmtINR(sim.interestSaved) + '</strong> that would otherwise go to interest. Prepaying early in the tenure saves the most because interest is front-loaded.';
+  }
+}
+
+/* ================= Wiring ================= */
+function syncPair(numId, rangeId, onChange) {
+  var num = $(numId), rng = $(rangeId);
+  num.addEventListener('input', function () { rng.value = num.value; onChange(); });
+  rng.addEventListener('input', function () { num.value = rng.value; onChange(); });
+}
+
+document.querySelectorAll('.tab-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.add('hidden'); });
+    $('tab-' + btn.dataset.tab).classList.remove('hidden');
+    if (btn.dataset.tab === 'calc') recalc();
+    if (btn.dataset.tab === 'compare') recalcCompare();
+    if (btn.dataset.tab === 'prepay') recalcPrepay();
+  });
+});
+
+document.querySelectorAll('.preset').forEach(function (b) {
+  b.addEventListener('click', function () {
+    setTenureUnit('years');
+    $('in-amount').value = b.dataset.p; $('in-amount-r').value = b.dataset.p;
+    $('in-rate').value = b.dataset.r; $('in-rate-r').value = b.dataset.r;
+    $('in-tenure').value = b.dataset.t; $('in-tenure-r').value = b.dataset.t;
+    recalc();
+  });
+});
+
+function setTenureUnit(u) {
+  tenureUnit = u;
+  var isY = u === 'years';
+  $('ten-y').className = 'gold-ring px-3 py-1.5 ' + (isY ? 'bg-gold text-navy' : 'text-slate-300');
+  $('ten-m').className = 'gold-ring px-3 py-1.5 ' + (!isY ? 'bg-gold text-navy' : 'text-slate-300');
+  var r = $('in-tenure-r');
+  if (isY) { r.min = 1; r.max = 30; r.step = 1; $('tenure-scale').innerHTML = '<span>1 yr</span><span>30 yrs</span>'; }
+  else { r.min = 6; r.max = 360; r.step = 6; $('tenure-scale').innerHTML = '<span>6 mo</span><span>360 mo</span>'; }
+  $('in-tenure').value = r.value;
+  recalc();
+}
+$('ten-y').addEventListener('click', function () { setTenureUnit('years'); });
+$('ten-m').addEventListener('click', function () { setTenureUnit('months'); });
+
+syncPair('in-amount', 'in-amount-r', recalc);
+syncPair('in-rate', 'in-rate-r', recalc);
+syncPair('in-tenure', 'in-tenure-r', recalc);
+['a-amount', 'a-rate', 'a-tenure', 'b-amount', 'b-rate', 'b-tenure'].forEach(function (id) {
+  $(id).addEventListener('input', recalcCompare);
+});
+syncPair('pp-extra', 'pp-extra-r', recalcPrepay);
+['pp-lump', 'pp-month'].forEach(function (id) { $(id).addEventListener('input', recalcPrepay); });
+
+$('btn-monthly').addEventListener('click', function () {
+  amortMode = 'monthly';
+  $('btn-monthly').className = 'gold-ring text-xs font-semibold px-3 py-2 rounded-lg bg-gold text-navy';
+  $('btn-yearly').className = 'gold-ring text-xs font-semibold px-3 py-2 rounded-lg border border-navyline text-slate-300 hover:border-gold transition-colors';
+  recalc();
+});
+$('btn-yearly').addEventListener('click', function () {
+  amortMode = 'yearly';
+  $('btn-yearly').className = 'gold-ring text-xs font-semibold px-3 py-2 rounded-lg bg-gold text-navy';
+  $('btn-monthly').className = 'gold-ring text-xs font-semibold px-3 py-2 rounded-lg border border-navyline text-slate-300 hover:border-gold transition-colors';
+  recalc();
+});
+$('btn-csv').addEventListener('click', downloadCSV);
+
+var resizeT;
+window.addEventListener('resize', function () {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(function () {
+    if (lastLoan) recalc();
+    recalcCompare();
+  }, 200);
+});
+
+/* localStorage */
+function saveState() {
+  try {
+    localStorage.setItem('loanlens-v1', JSON.stringify({
+      amount: $('in-amount').value, rate: $('in-rate').value,
+      tenure: $('in-tenure').value, unit: tenureUnit,
+      ppExtra: $('pp-extra').value, ppLump: $('pp-lump').value, ppMonth: $('pp-month').value
+    }));
+  } catch (e) {}
+}
+function loadState() {
+  try {
+    var s = JSON.parse(localStorage.getItem('loanlens-v1') || 'null');
+    if (!s) return;
+    if (s.unit && s.unit !== tenureUnit) setTenureUnit(s.unit);
+    if (s.amount) { $('in-amount').value = s.amount; $('in-amount-r').value = s.amount; }
+    if (s.rate) { $('in-rate').value = s.rate; $('in-rate-r').value = s.rate; }
+    if (s.tenure) { $('in-tenure').value = s.tenure; $('in-tenure-r').value = s.tenure; }
+    if (s.ppExtra) { $('pp-extra').value = s.ppExtra; $('pp-extra-r').value = s.ppExtra; }
+    if (s.ppLump) $('pp-lump').value = s.ppLump;
+    if (s.ppMonth) $('pp-month').value = s.ppMonth;
+  } catch (e) {}
+}
+
+/* init */
+loadState();
+recalc();
+recalcCompare();
+</script>
+</body>
+</html>
